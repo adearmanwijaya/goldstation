@@ -22,6 +22,8 @@ Daily Runner
 ## Tutorial
 
 - Just install missing module
+- Paste ur token in token.txt (for runner)
+- Paste ur reff in reff.txt (auto reff)
 
 ## AUTO REFF IS ONLY FOR PRIVATE GROUP
 
