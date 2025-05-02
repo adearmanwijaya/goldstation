@@ -4,6 +4,7 @@ import os
 import time
 from colorama import Fore, Style, init
 import random
+from faker import Faker
 init(autoreset=True)  # Initialize colorama for colored console output
 
 # Global Headers
@@ -66,7 +67,7 @@ def check_user_info(token):
     """Check user information"""
     url = "https://event.goldstation.io/api-v2/user/info"
     headers = HEADERS.copy()
-    headers["authorization"] = f"Bearer {token}"
+    headers["Cookie"] = f"auth_token={token}"
     
     max_retries = 10
     for attempt in range(max_retries):
@@ -124,7 +125,9 @@ def check_referral(token):
     """Check referral information"""
     url = "https://event.goldstation.io/api-v2/user/referral"
     headers = HEADERS.copy()
-    headers["authorization"] = f"Bearer {token}"
+    headers["Cookie"] = f"auth_token={token}"
+    headers["if-none-match"] = 'W/"14da-q7kpa6sgfUA5/BqJhZ8Wz2IPU8Y"'
+    headers["referer"] = "https://event.goldstation.io/tasks"
     
     max_retries = 10
     for attempt in range(max_retries):
@@ -176,7 +179,7 @@ def check_daily_status(token):
     url = "https://event.goldstation.io/api-v2/user/daily"
   
     headers = HEADERS.copy()
-    headers["authorization"] = f"Bearer {token}"
+    headers["Cookie"] = f"auth_token={token}"
     
     max_retries = 10
     for attempt in range(max_retries):
@@ -225,7 +228,7 @@ def perform_daily_checkin(token):
     url = "https://event.goldstation.io/api-v2/user/daily"
   
     headers = HEADERS.copy()
-    headers["authorization"] = f"Bearer {token}"
+    headers["Cookie"] = f"auth_token={token}"
     
     max_retries = 10
     for attempt in range(max_retries):
@@ -266,7 +269,7 @@ def mine(token, click_power=20000):
     url = "https://event.goldstation.io/api-v2/user/click"
      
     headers = HEADERS.copy()
-    headers["authorization"] = f"Bearer {token}"
+    headers["Cookie"] = f"auth_token={token}"
     
     data = {"clickPower": click_power}
     
@@ -318,7 +321,7 @@ def upgrade_level(token):
     url = "https://event.goldstation.io/api-v2/user/levelup"
    
     headers = HEADERS.copy()
-    headers["authorization"] = f"Bearer {token}"
+    headers["Cookie"] = f"auth_token={token}"
     max_retries = 10
     for attempt in range(max_retries):
         proxy = get_random_proxy()
@@ -371,9 +374,263 @@ def clear_cmd():
     else:
         os.system('clear')
         
+def open_chance_box(token):
+    """Open the chance box"""
+    url = "https://event.goldstation.io/api-v2/user/chance"
+    
+    headers = HEADERS.copy()
+    headers["Cookie"] = f"auth_token={token}"
+    headers["origin"] = "https://event.goldstation.io"
+    headers["referer"] = "https://event.goldstation.io/mine"
+    
+    # First try to purchase
+    data = {"method": "purchase"}
+    
+    max_retries = 10
+    for attempt in range(max_retries):
+        proxy = get_random_proxy()
+        if not proxy:
+            print(f"{Fore.RED}❌ No proxies available. Please add proxies to proxy.txt")
+            return False
+        
+        try:
+            response = requests.post(url, headers=headers, json=data, proxies=proxy, timeout=10)
+            response.raise_for_status()
+            result = response.json()
+            
+            if result.get("success"):
+                print(f"{Fore.GREEN}🎁 Chance box purchased successfully!")
+                # Now try to open
+                data = {"method": "open"}
+                response = requests.post(url, headers=headers, json=data, proxies=proxy, timeout=10)
+                response.raise_for_status()
+                result = response.json()
+                
+                if result.get("success"):
+                    data = result.get("data", {})
+                    reward_message = data.get("rewardMessage", "")
+                    reward_type = data.get("rewardType", "")
+                    reward_value = data.get("rewardValue", 0)
+                    
+                    print(f"{Fore.GREEN}🎁 Chance box opened successfully!")
+                    print(f"{Fore.CYAN}     💫 Message: {Fore.GREEN}{reward_message}")
+                    print(f"{Fore.CYAN}     🎯 Type: {Fore.GREEN}{reward_type}")
+                    print(f"{Fore.CYAN}     💎 Value: {Fore.GREEN}{reward_value}")
+                    return True
+                else:
+                    message = result.get("message", "Unknown error")
+                    if "No available count" in message:
+                        print(f"{Fore.YELLOW}📦 Chance box: No available count")
+                    else:
+                        print(f"{Fore.YELLOW}📦 Chance box: {message}")
+                    return False
+            else:
+                message = result.get("message", "Unknown error")
+                print(f"{Fore.YELLOW}📦 Chance box purchase: {message}")
+                return False
+        except (requests.exceptions.ProxyError, requests.exceptions.ConnectTimeout, requests.exceptions.ConnectionError) as e:
+            print(f"{Fore.YELLOW}⚠️ Proxy connection failed: {str(e)}")
+            if attempt < max_retries - 1:
+                print(f"{Fore.YELLOW}🔄 Retrying with a different proxy... Attempt {attempt + 2}/{max_retries}")
+                time.sleep(2)
+                continue
+            print(f"{Fore.RED}❌ All proxy attempts failed")
+            return False
+        except Exception as e:
+            print(f"{Fore.RED}❌ Unexpected error: {str(e)}")
+            if attempt < max_retries - 1:
+                print(f"{Fore.YELLOW}🔄 Retrying with a different proxy... Attempt {attempt + 2}/{max_retries}")
+                time.sleep(2)
+                continue
+            return False
+
+def check_missions(token):
+    """Check all missions and their status"""
+    url = "https://event.goldstation.io/api-v2/user/mission"
+    
+    headers = HEADERS.copy()
+    headers["Cookie"] = f"auth_token={token}"
+    headers["if-none-match"] = 'W/"1372-FMs6rT5XKXlID5OQLzASQLGK1zs"'
+    headers["referer"] = "https://event.goldstation.io/tasks"
+    
+    max_retries = 10
+    for attempt in range(max_retries):
+        proxy = get_random_proxy()
+        if not proxy:
+            print(f"{Fore.RED}❌ No proxies available. Please add proxies to proxy.txt")
+            return None
+        
+        try:
+            response = requests.get(url, headers=headers, proxies=proxy, timeout=10)
+            result = response.json()
+            
+            if result.get("success"):
+                missions = result.get("data", {}).get("missionHistory", [])
+                print(f"{Fore.CYAN}📋 Found {len(missions)} missions")
+                return missions
+            else:
+                print(f"{Fore.RED}❌ Failed to get missions: {result.get('message', 'Unknown error')}")
+                return None
+        except Exception as e:
+            print(f"{Fore.RED}❌ Error checking missions: {str(e)}")
+            if attempt < max_retries - 1:
+                time.sleep(2)
+                continue
+            return None
+
+def complete_survey_mission(token, mission_id=29):
+    """Complete the survey mission"""
+    url = "https://event.goldstation.io/api-v2/user/survey"
+    
+    headers = HEADERS.copy()
+    headers["Cookie"] = f"auth_token={token}"
+    headers["origin"] = "https://event.goldstation.io"
+    headers["referer"] = "https://event.goldstation.io/tasks"
+    
+    # Generate random name using Faker
+    fake = Faker()
+    miner_name = fake.first_name() + fake.last_name()
+    
+    data = {
+        "surveyId": mission_id,
+        "answers": [{
+            "questionId": 5,
+            "value": miner_name
+        }]
+    }
+    
+    max_retries = 10
+    for attempt in range(max_retries):
+        proxy = get_random_proxy()
+        if not proxy:
+            print(f"{Fore.RED}❌ No proxies available. Please add proxies to proxy.txt")
+            return False
+        
+        try:
+            response = requests.post(url, headers=headers, json=data, proxies=proxy, timeout=10)
+            result = response.json()
+            
+            if result.get("success"):
+                print(f"{Fore.GREEN}✅ Survey completed with name: {miner_name}")
+                return True
+            else:
+                print(f"{Fore.RED}❌ Failed to complete survey: {result.get('message', 'Unknown error')}")
+                return False
+        except Exception as e:
+            print(f"{Fore.RED}❌ Error completing survey: {str(e)}")
+            if attempt < max_retries - 1:
+                time.sleep(2)
+                continue
+            return False
+
+def progress_mission(token, mission_id):
+    """Progress a mission"""
+    url = "https://event.goldstation.io/api-v2/user/mission"
+    
+    headers = HEADERS.copy()
+    headers["Cookie"] = f"auth_token={token}"
+    headers["origin"] = "https://event.goldstation.io"
+    headers["referer"] = "https://event.goldstation.io/tasks"
+    
+    data = {"missionId": mission_id}
+    
+    max_retries = 10
+    for attempt in range(max_retries):
+        proxy = get_random_proxy()
+        if not proxy:
+            print(f"{Fore.RED}❌ No proxies available. Please add proxies to proxy.txt")
+            return False
+        
+        try:
+            response = requests.post(url, headers=headers, json=data, proxies=proxy, timeout=10)
+            result = response.json()
+            
+            if result.get("success"):
+                print(f"{Fore.GREEN}✅ Mission {mission_id} progressed")
+                return True
+            else:
+                print(f"{Fore.RED}❌ Failed to progress mission {mission_id}: {result.get('message', 'Unknown error')}")
+                return False
+        except Exception as e:
+            print(f"{Fore.RED}❌ Error progressing mission: {str(e)}")
+            if attempt < max_retries - 1:
+                time.sleep(2)
+                continue
+            return False
+
+def claim_mission(token, mission_id):
+    """Claim a mission reward"""
+    url = "https://event.goldstation.io/api-v2/user/mission"
+    
+    headers = HEADERS.copy()
+    headers["Cookie"] = f"auth_token={token}"
+    headers["origin"] = "https://event.goldstation.io"
+    headers["referer"] = "https://event.goldstation.io/tasks"
+    
+    data = {"missionId": mission_id}
+    
+    max_retries = 10
+    for attempt in range(max_retries):
+        proxy = get_random_proxy()
+        if not proxy:
+            print(f"{Fore.RED}❌ No proxies available. Please add proxies to proxy.txt")
+            return False
+        
+        try:
+            response = requests.post(url, headers=headers, json=data, proxies=proxy, timeout=10)
+            result = response.json()
+            
+            if result.get("success"):
+                print(f"{Fore.GREEN}✅ Mission {mission_id} claimed")
+                return True
+            else:
+                print(f"{Fore.RED}❌ Failed to claim mission {mission_id}: {result.get('message', 'Unknown error')}")
+                return False
+        except Exception as e:
+            print(f"{Fore.RED}❌ Error claiming mission: {str(e)}")
+            if attempt < max_retries - 1:
+                time.sleep(2)
+                continue
+            return False
+
+def handle_missions(token):
+    """Handle all missions"""
+    missions = check_missions(token)
+    if not missions:
+        return
+    
+    for mission in missions:
+        mission_id = mission.get("id")
+        mission_name = mission.get("missionName")
+        complete = mission.get("complete")
+        claimed = mission.get("claim")
+        
+        print(f"\n{Fore.CYAN}📋 Mission: {mission_name} (ID: {mission_id})")
+        
+        if complete and claimed:
+            print(f"{Fore.GREEN}✅ Already completed and claimed")
+            continue
+            
+        if not complete:
+            print(f"{Fore.YELLOW}🔄 Attempting to complete mission...")
+            if mission_id == 29:  # Special survey mission
+                complete_survey_mission(token)
+            else:
+                progress_mission(token, mission_id)
+            time.sleep(2)
+            
+        if not claimed:
+            print(f"{Fore.YELLOW}🔄 Attempting to claim mission...")
+            claim_mission(token, mission_id)
+            time.sleep(2)
+
 def main():
     print_welcome_message()
-    
+            # Ask if user wants to upgrade level
+    print(f"{Fore.BLUE+Style.BRIGHT}📌 Do you want to upgrade level? (y/n) {Fore.RESET}")
+    upgrade_choice = input().lower()
+    print(f"{Fore.BLUE+Style.BRIGHT}📌 Do you want to clear mission? (y/n) {Fore.RESET}")
+    clear_mission_choice = input().lower()
     # Load tokens from token.txt
     tokens = load_tokens_from_file('token.txt')
     
@@ -393,17 +650,27 @@ def main():
             continue
             
         # Check referral
-        if not check_referral(token):
-            print(f"{Fore.RED}❌{Fore.RESET} Failed to get referral info, skipping token")
-            continue
+     
         
         # Check daily status
         today_checked = check_daily_status(token)
         time.sleep(2)
+        
         # Perform daily check-in if not already checked
         if not today_checked:
             print(f"{Fore.BLUE}INFO{Fore.RESET} Performing daily check-in...")
             perform_daily_checkin(token)
+            
+        # Try to open chance box
+        print(f"{Fore.BLUE}INFO{Fore.RESET} Trying to open chance box...")
+        open_chance_box(token)
+        time.sleep(2)
+        
+        if clear_mission_choice == 'y':
+            # Handle missions
+            print(f"{Fore.BLUE}INFO{Fore.RESET} Checking missions...")
+            handle_missions(token)
+            time.sleep(2)
         
         # Mine until no more clicks available
         print(f"{Fore.BLUE+Style.BRIGHT}⚒️ Starting mining...")
@@ -413,25 +680,24 @@ def main():
             if can_mine:
                 time.sleep(2)  # Small delay between mining actions
         
-        # Try to upgrade level
-        print(f"{Fore.BLUE+Style.BRIGHT}📌 Attempting to upgrade level {Fore.RESET}")
-        can_upgrade = True
-        while can_upgrade:
-            success, result = upgrade_level(token)
-          
-            can_upgrade = success
-            if can_upgrade:
-                # After successful upgrade, try mining again
-                # print(f"[ {Fore.BLUE}INFO{Fore.RESET} ] Level upgraded, mining again...")
-                can_mine = True
-                while can_mine:
-                    can_mine = mine(token)
-                    if can_mine:
-                        time.sleep(2)  # Small delay between mining actions
-            else:
-                # If upgrade failed, check if it's because of not enough power
-                if "Not enough power to level up" in result.get('message', ''):
-                    break
+
+        
+        if upgrade_choice == 'y':
+            can_upgrade = True
+            while can_upgrade:
+                success, result = upgrade_level(token)
+                can_upgrade = success
+                if can_upgrade:
+                    # After successful upgrade, try mining again
+                    can_mine = True
+                    while can_mine:
+                        can_mine = mine(token)
+                        if can_mine:
+                            time.sleep(2)  # Small delay between mining actions
+                else:
+                    # If upgrade failed, check if it's because of not enough power
+                    if "Not enough power to level up" in result.get('message', ''):
+                        break
         
         print(f"\n{Fore.CYAN}{'='*50}{Fore.RESET}\n")
         time.sleep(3)  # Delay between tokens
