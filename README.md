@@ -27,4 +27,4 @@ Daily Runner
 
 ## AUTO REFF IS ONLY FOR PRIVATE GROUP
 
-![](https://i.ibb.co.com/bMBqR5gw/Screenshot-2025-04-12-004814.png)
+![SS](https://i.ibb.co.com/bMBqR5gw/Screenshot-2025-04-12-004814.png)
